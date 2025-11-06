@@ -30,17 +30,17 @@ bool GreyScaleImage::load(const std::string& filename) {
     height = h;
     channels = CHANNELS;
 
-    pixels.assign(height, std::vector<int>(width, 0));
+    pixels.assign(height, std::vector<double>(width, 0));
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            pixels[y][x] = static_cast<int>(data[y * width + x]);
+            pixels[y][x] = static_cast<double>(data[y * width + x]);
         }
     }
 
     return true;
 }
 
-void GreyScaleImage::setMatrix(const std::vector<std::vector<int>>& matrix) {
+void GreyScaleImage::setMatrix(const std::vector<std::vector<double>>& matrix) {
     pixels = matrix;
     height = static_cast<int>(matrix.size());
     width = height > 0 ? static_cast<int>(matrix[0].size()) : 0;
@@ -67,7 +67,7 @@ void GreyScaleImage::save(const std::string& filename) const {
     }
 }
 
-const std::vector<std::vector<int>>& GreyScaleImage::getMatrix() const {
+const std::vector<std::vector<double>>& GreyScaleImage::getMatrix() const {
     return pixels;
 }
 

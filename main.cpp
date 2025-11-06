@@ -2,8 +2,8 @@
 
 
 int main() {
-    GreyScaleImage *img = new GreyScaleImage("images/2.png");
-    img->save("images/2_copy.png");
+    GreyScaleImage *img = new GreyScaleImage("images/image.png");
+    img->save("images/image_copy.png");
     delete img;
     return 0;
 }

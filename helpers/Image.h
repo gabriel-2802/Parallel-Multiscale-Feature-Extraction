@@ -4,8 +4,8 @@
 #include <iostream>
 #include <stdexcept>
 
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 4434
+#define HEIGHT 3547
 #define CHANNELS 1
 
 class GreyScaleImage {
@@ -34,9 +34,9 @@ public:
     bool load(const std::string& filename);
 
 
-    void setMatrix(const std::vector<std::vector<int>>& matrix);
+    void setMatrix(const std::vector<std::vector<double>>& matrix);
 
-    const std::vector<std::vector<int>>& getMatrix() const;
+    const std::vector<std::vector<double>>& getMatrix() const;
 
     void save(const std::string& filename) const;
 
@@ -49,5 +49,5 @@ private:
     int width = 0;
     int height = 0;
     int channels = 0;
-    std::vector<std::vector<int>> pixels;
+    std::vector<std::vector<double>> pixels;
 };
