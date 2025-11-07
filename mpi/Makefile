@@ -25,6 +25,10 @@ $(TARGET): $(OBJS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Run rule
+run: $(TARGET)
+	mpirun -np $(NP) ./$(TARGET)
+
 # Clean up build artifacts
 clean:
 	rm -f $(OBJS) $(TARGET)

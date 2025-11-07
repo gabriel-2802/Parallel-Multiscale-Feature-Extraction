@@ -1,7 +1,10 @@
 #pragma once
 
-#include <climits>
+#include <mpi.h>
+#include <cfloat>
 
+#include "../helpers/kernels.h"
+#include "aux.h"
 #include "entity.h"
 #include "../helpers/image.h"
 #include "../helpers/kernels.h"
@@ -13,12 +16,13 @@ public:
     void run() override;
 
 private:
-    std::vector<std::vector<double>> imageSegment;
-    double localMin = INT_MAX;
-    double localMax = INT_MIN;
+    std::vector<std::vector<double>> pixels;
+    ProcessDims dims{0,0,0,0,0};
+    MinMaxVals minMax{DBL_MAX, -DBL_MAX};
 
     void receive();
     void process();
     void computeMinMax();
+    void normalize();
     void send();
 };

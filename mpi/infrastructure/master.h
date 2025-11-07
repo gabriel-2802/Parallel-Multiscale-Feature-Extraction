@@ -1,8 +1,8 @@
 #pragma once
 #include "entity.h"
 #include "../helpers/image.h"
-
-#define MASTER_RANK 0
+#include "aux.h"
+#include <memory>
 
 class Master : public Entity {
 public:
@@ -11,12 +11,14 @@ public:
     void run() override;
 
 private:
-    GreyScaleImage* image;
+    
     std::string outImagePath;
+    std::unique_ptr<GreyScaleImage> image;
 
-    void loadImage();
-    void scatter();
-    void normalize();
+    void saveLayer();
+    void scatter(LAYER layer);
+    int getPaddingForLayer(LAYER layer);
+    void findGlobalMinMax();
     void gather();
     void saveImage();
 };
