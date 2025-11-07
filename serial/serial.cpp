@@ -2,7 +2,7 @@
 #include <chrono>
 #include <vector>
 #include <climits>
-#include "../helpers/Image.h"
+#include "../helpers/image.h"
 #include "../helpers/kernels.h"
 
 using namespace std;

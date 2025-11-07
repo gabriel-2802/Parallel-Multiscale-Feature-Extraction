@@ -1,4 +1,4 @@
-#include "helpers/Image.h"
+#include "helpers/image.h"
 
 
 int main() {
