@@ -1,6 +1,6 @@
 # --- Compiler and Flags ---
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -Wno-missing-field-initializers
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-but-set-variable
 
 # --- Directories ---
 SRC_DIR := .
