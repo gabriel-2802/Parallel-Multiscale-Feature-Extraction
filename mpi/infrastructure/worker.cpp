@@ -15,6 +15,7 @@ void Worker::run() {
         computeMinMax();
         normalize();
         send();
+        break;
     }
 }
 
@@ -52,12 +53,12 @@ void Worker::computeMinMax() {
 }
 
 void Worker::normalize() {
-    double range = minMax.localMax - minMax.localMin;
-    for (auto& row : pixels) {
-        for (auto& val : row) {
-            val = 255.0 * (val - minMax.localMin) / range;
-        }
-    }
+    // double range = minMax.localMax - minMax.localMin;
+    // for (auto& row : pixels) {
+    //     for (auto& val : row) {
+    //         val = 255.0 * (val - minMax.localMin) / range;
+    //     }
+    // }
 }
 
 void Worker::send() {

@@ -1,10 +1,13 @@
 #include <mpi.h>
 #include <memory>
+#include <chrono>
+
 #include "infrastructure/master.h"
 #include "infrastructure/worker.h"
 #include "infrastructure/entity.h"
 
 using namespace std;
+using namespace std::chrono;
 
 int main(int argc, char** argv) {
 	int numtasks, rank;

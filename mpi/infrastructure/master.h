@@ -15,10 +15,9 @@ private:
     std::string outImagePath;
     std::unique_ptr<GreyScaleImage> image;
 
-    void saveLayer();
     void scatter(LAYER layer);
     int getPaddingForLayer(LAYER layer);
     void findGlobalMinMax();
-    void gather();
+    void gatherAndSaveLayer();
     void saveImage();
 };

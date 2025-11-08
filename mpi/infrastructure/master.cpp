@@ -18,13 +18,13 @@ void Master::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         scatter(static_cast<LAYER>(layer));
         findGlobalMinMax();
-        gather();
-        saveLayer();
+        gatherAndSaveLayer();
+        break;
     }
+
+    saveImage();
 }
 
-void Master::saveLayer() {
-}
 
 void Master::scatter(LAYER layer) {
 
@@ -94,10 +94,11 @@ void Master::findGlobalMinMax() {
     }
 }
 
-void Master::gather() {
-    const auto& matrix = image->getMatrix();
+void Master::gatherAndSaveLayer() {
     int height = image->getHeight();
     int width = image->getWidth();
+
+    vector<vector<double>> pixels(height, vector<double>(width));
 
     // number of workers (excluding master)
     int numWorkers = numtasks - 1;
@@ -115,12 +116,15 @@ void Master::gather() {
         MPI_Recv(buffer.data(), rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         for (int i = 0; i < rowsForWorker; ++i) {
-            copy(buffer.begin() + i * width, buffer.begin() + (i + 1) * width, matrix[startRow + i].begin());
+            copy(buffer.begin() + i * width, buffer.begin() + (i + 1) * width, pixels[startRow + i].begin());
         }
 
         startRow += rowsForWorker;
     }
+
+    image->setMatrix(pixels);
 }
 
 void Master::saveImage() {
+    image->save(outImagePath);
 }
