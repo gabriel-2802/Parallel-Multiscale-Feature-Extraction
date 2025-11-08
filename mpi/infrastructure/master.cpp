@@ -19,7 +19,6 @@ void Master::run() {
         scatter(static_cast<LAYER>(layer));
         findGlobalMinMax();
         gatherAndSaveLayer();
-        break;
     }
 
     saveImage();
@@ -85,8 +84,8 @@ void Master::findGlobalMinMax() {
         MinMaxVals localMinMax{0.0, 0.0};
         MPI_Recv(&localMinMax, sizeof(MinMaxVals), MPI_BYTE, worker, COMM_TAGS::MIN_MAX_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         
-        minMax.localMin = min(minMax.localMin, localMinMax.localMin);
-        minMax.localMax = max(minMax.localMax, localMinMax.localMax);
+        minMax.min = min(minMax.min, localMinMax.min);
+        minMax.max = max(minMax.max, localMinMax.max);
     }
 
     for (int worker = 1; worker < numtasks; ++worker) {

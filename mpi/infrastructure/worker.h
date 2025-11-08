@@ -21,7 +21,7 @@ private:
     MinMaxVals minMax{DBL_MAX, -DBL_MAX};
 
     void receive();
-    void process();
+    void process(LAYER layer);
     void computeMinMax();
     void normalize();
     void send();

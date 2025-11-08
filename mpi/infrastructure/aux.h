@@ -27,10 +27,10 @@ struct __attribute__((packed)) ProcessDims {
 };
 
 struct __attribute__((packed)) MinMaxVals {
-    double localMin;
-    double localMax;
+    double min;
+    double max;
 
     MinMaxVals(double minVal, double maxVal)
-        : localMin(minVal), localMax(maxVal) {}
+        : min(minVal), max(maxVal) {}
 };
 

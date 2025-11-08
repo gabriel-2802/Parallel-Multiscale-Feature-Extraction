@@ -10,6 +10,7 @@ using namespace std;
 using namespace std::chrono;
 
 int main(int argc, char** argv) {
+
 	int numtasks, rank;
 	MPI_Init(&argc, &argv);
 
@@ -19,13 +20,22 @@ int main(int argc, char** argv) {
 	unique_ptr<Entity> entity;
 
 	if (rank == MASTER_RANK) {
+		auto start = high_resolution_clock::now();
+
 		entity = make_unique<Master>(numtasks, rank, "../images/image.png", "../images/output_mpi.png");
+		entity->run();
+
+		auto stop = high_resolution_clock::now();
+		auto duration = duration_cast<milliseconds>(stop - start);
+		cout << "Processing time: " << duration.count() << " ms" << endl;
+
 	} else {
 		entity = make_unique<Worker>(numtasks, rank);
+		entity->run();
 	}
-
-	entity->run();
 	
 	MPI_Finalize();
+	auto stop = high_resolution_clock::now();
+
 	return 0;
 }

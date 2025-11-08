@@ -6,6 +6,8 @@ TARGET = mpi
 SRC_DIRS = . ./infrastructure ../helpers ../helpers/stb
 SRCS = $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
 
+vpath %.cpp $(SRC_DIRS)
+
 OBJ_DIR = obj
 OBJS = $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
 
