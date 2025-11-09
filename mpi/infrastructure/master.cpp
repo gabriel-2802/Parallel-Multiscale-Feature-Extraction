@@ -6,8 +6,8 @@
 
 using namespace std;
 
-Master::Master(int numtasks, int rank, std::string inputImagePath, std::string outputImagePath) : Entity(numtasks, rank) {
-    image = std::make_unique<GreyScaleImage>(inputImagePath);
+Master::Master(int numtasks, int rank, string inputImagePath, string outputImagePath) : Entity(numtasks, rank) {
+    image = make_unique<GreyScaleImage>(inputImagePath);
     outImagePath = outputImagePath;
 }
 
@@ -24,11 +24,10 @@ void Master::run() {
     saveImage();
 }
 
-
 void Master::scatter(LAYER layer) {
 
     // image data
-    const auto& matrix = image->getMatrix();
+    const auto& flattenMatrix = image->getFlattenedMatrix();
     int height = image->getHeight();
     int width = image->getWidth();
     int padding = getPaddingForLayer(layer);
@@ -54,11 +53,7 @@ void Master::scatter(LAYER layer) {
         ProcessDims dims(totalRows, width, rowsForWorker, padding, startRow - actualStart);
         MPI_Send(&dims, sizeof(ProcessDims), MPI_BYTE, worker, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD);
 
-        vector<double> buffer(totalRows * width);
-        for (int i = 0; i < totalRows; ++i) {
-            copy(matrix[actualStart + i].begin(), matrix[actualStart + i].end(), buffer.begin() + i * width);
-        }
-        MPI_Send(buffer.data(), totalRows * width, MPI_DOUBLE, worker, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD);
+        MPI_Send(flattenMatrix.data() + actualStart * width, totalRows * width, MPI_DOUBLE, worker, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD);
         
         startRow += rowsForWorker;
     }
@@ -89,7 +84,7 @@ void Master::gatherAndSaveLayer() {
     int height = image->getHeight();
     int width = image->getWidth();
 
-    vector<vector<double>> pixels(height, vector<double>(width));
+    vector<double> pixels(height * width);
 
     // number of workers (excluding master)
     int numWorkers = numtasks - 1;
@@ -102,18 +97,13 @@ void Master::gatherAndSaveLayer() {
     for (int worker = 1; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
         int rowsForWorker = baseRows + (worker - 1 < remainder ? 1 : 0);
-
-        vector<double> buffer(rowsForWorker * width);
-        MPI_Recv(buffer.data(), rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-        for (int i = 0; i < rowsForWorker; ++i) {
-            copy(buffer.begin() + i * width, buffer.begin() + (i + 1) * width, pixels[startRow + i].begin());
-        }
-
+        
+        MPI_Recv(&pixels[startRow * width], rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
         startRow += rowsForWorker;
     }
 
-    image->setMatrix(pixels);
+    image->setFlattenedMatrix(pixels);
 }
 
 void Master::saveImage() {

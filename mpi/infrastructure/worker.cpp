@@ -1,5 +1,5 @@
 #include "worker.h"
-
+#include <algorithm>
 
 using namespace std;
 
@@ -23,22 +23,18 @@ void Worker::receive() {
     MPI_Recv(&dims, sizeof(ProcessDims), MPI_BYTE, MASTER_RANK, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     this->dims = dims;
 
-    vector<double> flatData(dims.totalRows * dims.width);
-    MPI_Recv(flatData.data(), dims.totalRows * dims.width, MPI_DOUBLE, MASTER_RANK, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-    pixels.assign(dims.totalRows, vector<double>(dims.width));
-    for (int i = 0; i < dims.totalRows; ++i) {
-        copy(flatData.begin() + i * dims.width, flatData.begin() + (i + 1) * dims.width, pixels[i].begin());
-    }
+    // receive directly into flat array
+    pixels.resize(dims.totalRows * dims.width);
+    MPI_Recv(pixels.data(), dims.totalRows * dims.width, MPI_DOUBLE, MASTER_RANK, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 void Worker::computeMinMax() {
     MinMaxVals localMinMax{DBL_MAX, -DBL_MAX};
     
-    // compute local min/max for worker's rows
+    // compute local min/max for worker's rows using flat array
     for (int i = 0; i < dims.rowsForWorker; ++i) {
         for (int j = 0; j < dims.width; ++j) {
-            double val = pixels[dims.offset + i][j];
+            double val = at(dims.offset + i, j);
             if (val < localMinMax.min) {
                 localMinMax.min = val;
             }
@@ -64,8 +60,8 @@ void Worker::process(LAYER layer) {
     int kernelSize = kernel.size();
     int kernelRadius = kernelSize / 2;
     
-    // create a result matrix for the processed rows (without padding)
-    vector<vector<double>> result(dims.rowsForWorker, vector<double>(dims.width));
+    // create a flat result array for the processed rows (without padding)
+    vector<double> result(dims.rowsForWorker * dims.width);
     
     // apply convolution only to the working rows
     for (int i = 0; i < dims.rowsForWorker; ++i) {
@@ -77,34 +73,36 @@ void Worker::process(LAYER layer) {
                     int pixelRow = dims.offset + i + (ki - kernelRadius);
                     int pixelCol = j + (kj - kernelRadius);
                     
-                    // CLAMP instead of boundary check
                     pixelRow = max(0, min(pixelRow, dims.totalRows - 1));
                     pixelCol = max(0, min(pixelCol, dims.width - 1));
                     
-                    sum += pixels[pixelRow][pixelCol] * kernel[ki][kj];
+                    sum += at(pixelRow, pixelCol) * kernel[ki][kj];
                 }
             }
             
-            result[i][j] = sum / divisor;
+            result[i * dims.width + j] = sum / divisor;
         }
     }
     
-    for (int i = 0; i < dims.rowsForWorker; ++i)
-        pixels[dims.offset + i] = move(result[i]);
+    // copy result back to working rows in pixels
+    for (int i = 0; i < dims.rowsForWorker; ++i) {
+        for (int j = 0; j < dims.width; ++j) {
+            at(dims.offset + i, j) = result[i * dims.width + j];
+        }
+    }
 }
 
 void Worker::normalize() {
     double range = (minMax.max - minMax.min == 0) ? 1.0 : (minMax.max - minMax.min);
 
-    for (int i = 0; i < dims.rowsForWorker; ++i)
-        for (int j = 0; j < dims.width; ++j)
-            pixels[dims.offset + i][j] = 255.0 * (pixels[dims.offset + i][j] - minMax.min) / range;
+    for (int i = 0; i < dims.rowsForWorker; ++i) {
+        for (int j = 0; j < dims.width; ++j) {
+            at(dims.offset + i, j) = 255.0 * (at(dims.offset + i, j) - minMax.min) / range;
+        }
+    }
 }
 
 void Worker::send() {
-    vector<double> flatData(dims.rowsForWorker * dims.width);
-    for (int i = 0; i < dims.rowsForWorker; ++i) {
-        copy(pixels[i + dims.offset].begin(), pixels[i + dims.offset].end(), flatData.begin() + i * dims.width);
-    }
-    MPI_Send(flatData.data(), dims.rowsForWorker * dims.width, MPI_DOUBLE, MASTER_RANK, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD);
+    int startIdx = dims.offset * dims.width;
+    MPI_Send(&pixels[startIdx], dims.rowsForWorker * dims.width, MPI_DOUBLE, MASTER_RANK, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD);
 }

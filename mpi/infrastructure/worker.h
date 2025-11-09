@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mpi.h>
-#include <cfloat>
 
 #include "../helpers/kernels.h"
 #include "aux.h"
@@ -16,13 +15,13 @@ public:
     void run() override;
 
 private:
-    std::vector<std::vector<double>> pixels;
-    ProcessDims dims{0,0,0,0,0};
-    MinMaxVals minMax{DBL_MAX, -DBL_MAX};
-
     void receive();
     void process(LAYER layer);
     void computeMinMax();
     void normalize();
     void send();
+    
+    // Helper to access pixel at (row, col) in flat array
+    inline double& at(int row, int col) { return pixels[row * dims.width + col]; }
+    inline const double& at(int row, int col) const { return pixels[row * dims.width + col]; }
 };
