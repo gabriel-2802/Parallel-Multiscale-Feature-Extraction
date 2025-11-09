@@ -17,7 +17,6 @@ private:
 
     void scatter(LAYER layer);
     int getPaddingForLayer(LAYER layer);
-    void findGlobalMinMax();
     void gatherAndSaveLayer();
     void saveImage();
 };

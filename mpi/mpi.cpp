@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
 		cout << "Processing time: " << duration.count() << " ms" << endl;
 
 	} else {
-		entity = make_unique<Worker>(numtasks, rank);
+		entity = make_unique<Crew>(numtasks, rank);
 		entity->run();
 	}
 	

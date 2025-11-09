@@ -17,7 +17,9 @@ Master::~Master() {
 void Master::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         scatter(static_cast<LAYER>(layer));
-        findGlobalMinMax();
+        process(static_cast<LAYER>(layer));
+        computeMinMax();
+        normalize();
         gatherAndSaveLayer();
     }
 
@@ -33,14 +35,14 @@ void Master::scatter(LAYER layer) {
     int padding = getPaddingForLayer(layer);
     
     // number of workers (excluding master)
-    int numWorkers = numtasks - 1;
+    int numWorkers = numtasks;
 
     // base rows per worker and remainder
     int baseRows = height / numWorkers;
     int remainder = height % numWorkers;
 
     int startRow = 0;    
-    for (int worker = 1; worker < numtasks; ++worker) {
+    for (int worker = 0; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
         int rowsForWorker = baseRows + (worker - 1 < remainder ? 1 : 0);
         
@@ -49,10 +51,20 @@ void Master::scatter(LAYER layer) {
         int actualEnd = min(height, startRow + rowsForWorker + padding);
         int totalRows = actualEnd - actualStart;
         
-        // send dimensions
+        // prep dimensions
         ProcessDims dims(totalRows, width, rowsForWorker, padding, startRow - actualStart);
-        MPI_Send(&dims, sizeof(ProcessDims), MPI_BYTE, worker, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD);
 
+        // prep work for self
+        if (worker == MASTER_RANK) {
+            this->dims = dims;
+            pixels.resize(dims.totalRows * dims.width);
+            copy(flattenMatrix.begin() + actualStart * width, flattenMatrix.begin() + actualStart * width + totalRows * width, pixels.begin());
+            startRow += rowsForWorker;
+            continue;
+        }
+        
+        // send to worker
+        MPI_Send(&dims, sizeof(ProcessDims), MPI_BYTE, worker, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD);
         MPI_Send(flattenMatrix.data() + actualStart * width, totalRows * width, MPI_DOUBLE, worker, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD);
         
         startRow += rowsForWorker;
@@ -72,26 +84,21 @@ int Master::getPaddingForLayer(LAYER layer) {
     }
 }
 
-void Master::findGlobalMinMax() {
-    MinMaxVals localMinMax{DBL_MAX, -DBL_MAX};
-    MinMaxVals globalMinMax{0.0, 0.0};
-
-    MPI_Allreduce(&localMinMax.min, &globalMinMax.min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(&localMinMax.max, &globalMinMax.max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-}
-
 void Master::gatherAndSaveLayer() {
     int height = image->getHeight();
     int width = image->getWidth();
 
     vector<double> pixels(height * width);
 
-    // number of workers (excluding master)
-    int numWorkers = numtasks - 1;
+    // number of workers 
+    int numWorkers = numtasks;
 
     // base rows per worker and remainder
     int baseRows = height / numWorkers;
     int remainder = height % numWorkers;
+
+    // gather from self
+    copy(this->pixels.begin() + dims.offset * dims.width, this->pixels.begin() + (dims.offset + dims.rowsForWorker) * dims.width, pixels.begin());
 
     int startRow = 0;    
     for (int worker = 1; worker < numtasks; ++worker) {
