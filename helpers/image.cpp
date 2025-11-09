@@ -71,6 +71,36 @@ const std::vector<std::vector<double>>& GreyScaleImage::getMatrix() const {
     return pixels;
 }
 
+const std::vector<double> GreyScaleImage::getFlattenedMatrix() const {
+    std::vector<double> flatMatrix;
+    flatMatrix.reserve(width * height);
+    for (const auto& row : pixels) {
+        flatMatrix.insert(flatMatrix.end(), row.begin(), row.end());
+    }
+    return flatMatrix;
+}
+
+void GreyScaleImage::setFlattenedMatrix(const std::vector<double>& flatMatrix) {
+
+    pixels.assign(height, std::vector<double>(width, 0));
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            pixels[y][x] = flatMatrix[y * width + x];
+        }
+    }
+
+    if (data) {
+        stbi_image_free(data);
+    }
+
+    data = new unsigned char[width * height * channels];
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            data[y * width + x] = static_cast<unsigned char>(pixels[y][x]);
+        }
+    }
+}
+
 int GreyScaleImage::getWidth() const {
     return width;
 }

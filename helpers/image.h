@@ -38,6 +38,10 @@ public:
 
     const std::vector<std::vector<double>>& getMatrix() const;
 
+    void setFlattenedMatrix(const std::vector<double>& flatMatrix);
+
+    const std::vector<double> getFlattenedMatrix() const;
+
     void save(const std::string& filename) const;
 
     int getWidth() const;
