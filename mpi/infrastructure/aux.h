@@ -32,5 +32,8 @@ struct __attribute__((packed)) MinMaxVals {
 
     MinMaxVals(double minVal, double maxVal)
         : min(minVal), max(maxVal) {}
+
+    MinMaxVals()
+        : min(0.0), max(0.0) {}
 };
 

@@ -33,24 +33,23 @@ void Worker::receive() {
 }
 
 void Worker::computeMinMax() {
-    minMax.min = DBL_MAX;
-    minMax.max = -DBL_MAX;
+    MinMaxVals localMinMax{DBL_MAX, -DBL_MAX};
     
+    // compute local min/max for worker's rows
     for (int i = 0; i < dims.rowsForWorker; ++i) {
         for (int j = 0; j < dims.width; ++j) {
             double val = pixels[dims.offset + i][j];
-            if (val < minMax.min) {
-                minMax.min = val;
+            if (val < localMinMax.min) {
+                localMinMax.min = val;
             }
-            if (val > minMax.max) {
-                minMax.max = val;
+            if (val > localMinMax.max) {
+                localMinMax.max = val;
             }
         }
     }
     
-    // send local min/max to master and receive global min/max
-    MPI_Send(&minMax, sizeof(MinMaxVals), MPI_BYTE, MASTER_RANK, COMM_TAGS::MIN_MAX_DATA, MPI_COMM_WORLD);
-    MPI_Recv(&minMax, sizeof(MinMaxVals), MPI_BYTE, MASTER_RANK, COMM_TAGS::MIN_MAX_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Allreduce(&localMinMax.min, &minMax.min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&localMinMax.max, &minMax.max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 }
 
 void Worker::process(LAYER layer) {
@@ -79,8 +78,8 @@ void Worker::process(LAYER layer) {
                     int pixelCol = j + (kj - kernelRadius);
                     
                     // CLAMP instead of boundary check
-                    pixelRow = std::max(0, std::min(pixelRow, dims.totalRows - 1));
-                    pixelCol = std::max(0, std::min(pixelCol, dims.width - 1));
+                    pixelRow = max(0, min(pixelRow, dims.totalRows - 1));
+                    pixelCol = max(0, min(pixelCol, dims.width - 1));
                     
                     sum += pixels[pixelRow][pixelCol] * kernel[ki][kj];
                 }
@@ -91,7 +90,7 @@ void Worker::process(LAYER layer) {
     }
     
     for (int i = 0; i < dims.rowsForWorker; ++i)
-        pixels[dims.offset + i] = std::move(result[i]);
+        pixels[dims.offset + i] = move(result[i]);
 }
 
 void Worker::normalize() {

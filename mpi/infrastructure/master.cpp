@@ -78,19 +78,11 @@ int Master::getPaddingForLayer(LAYER layer) {
 }
 
 void Master::findGlobalMinMax() {
-    MinMaxVals minMax{DBL_MAX, -DBL_MAX};
+    MinMaxVals localMinMax{DBL_MAX, -DBL_MAX};
+    MinMaxVals globalMinMax{0.0, 0.0};
 
-    for (int worker = 1; worker < numtasks; ++worker) {
-        MinMaxVals localMinMax{0.0, 0.0};
-        MPI_Recv(&localMinMax, sizeof(MinMaxVals), MPI_BYTE, worker, COMM_TAGS::MIN_MAX_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        
-        minMax.min = min(minMax.min, localMinMax.min);
-        minMax.max = max(minMax.max, localMinMax.max);
-    }
-
-    for (int worker = 1; worker < numtasks; ++worker) {
-        MPI_Send(&minMax, sizeof(MinMaxVals), MPI_BYTE, worker, COMM_TAGS::MIN_MAX_DATA, MPI_COMM_WORLD);
-    }
+    MPI_Allreduce(&localMinMax.min, &globalMinMax.min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&localMinMax.max, &globalMinMax.max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 }
 
 void Master::gatherAndSaveLayer() {
