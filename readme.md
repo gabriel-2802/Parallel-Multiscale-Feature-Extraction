@@ -1,12 +1,5 @@
-
-# Multi-Scale Feature Extraction Network
-
-## Serial Time
-
-| Run | Processing Time (ms) |
-|-----|-----------------------|
-| 1   | 22612                |
-| 2   | 28085                |
-| 3   | 25898                |
-| 4   | 26872                |
-| 5   | 23589                |
+Commands
+Create:
+vtune -collect hotspots -result-dir ./vtune_results -- ./openmp
+Visualize:
+vtune-gui openmp/vtune_results/vtune_results.vtune
