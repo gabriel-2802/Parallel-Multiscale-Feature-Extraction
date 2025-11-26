@@ -4,8 +4,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#define WIDTH 4434
-#define HEIGHT 3547
 #define CHANNELS 1
 
 class GreyScaleImage {
