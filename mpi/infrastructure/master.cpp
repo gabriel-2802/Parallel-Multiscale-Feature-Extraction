@@ -44,7 +44,7 @@ void Master::scatter(LAYER layer) {
     int startRow = 0;    
     for (int worker = 0; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
-        int rowsForWorker = baseRows + (worker - 1 < remainder ? 1 : 0);
+        int rowsForWorker = baseRows + (worker < remainder ? 1 : 0);
         
         // calculate actual start and end with padding
         int actualStart = max(0, startRow - padding);
@@ -98,12 +98,13 @@ void Master::gatherAndSaveLayer() {
     int remainder = height % numWorkers;
 
     // gather from self
+    int rowsForMaster = baseRows + (0 < remainder ? 1 : 0);
     copy(this->pixels.begin() + dims.offset * dims.width, this->pixels.begin() + (dims.offset + dims.rowsForWorker) * dims.width, pixels.begin());
 
-    int startRow = 0;    
+    int startRow = rowsForMaster;    
     for (int worker = 1; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
-        int rowsForWorker = baseRows + (worker - 1 < remainder ? 1 : 0);
+        int rowsForWorker = baseRows + (worker < remainder ? 1 : 0);
         
         MPI_Recv(&pixels[startRow * width], rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         

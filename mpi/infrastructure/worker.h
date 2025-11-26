@@ -17,10 +17,6 @@ public:
     void run() override;
 
 private:
-    std::vector<double> pixels; // flat array
-    ProcessDims dims{0,0,0,0,0};
-    MinMaxVals minMax{DBL_MAX, -DBL_MAX};
-
     void receive();
     void send();
 
