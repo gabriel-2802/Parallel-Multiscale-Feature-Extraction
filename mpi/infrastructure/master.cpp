@@ -41,6 +41,9 @@ void Master::scatter(LAYER layer) {
     int baseRows = height / numWorkers;
     int remainder = height % numWorkers;
 
+    vector<MPI_Request> requests((numtasks - 1) * 2);
+    int reqIdx = 0;
+
     int startRow = 0;    
     for (int worker = 0; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
@@ -63,12 +66,15 @@ void Master::scatter(LAYER layer) {
             continue;
         }
         
-        // send to worker
-        MPI_Send(&dims, sizeof(ProcessDims), MPI_BYTE, worker, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD);
-        MPI_Send(flattenMatrix.data() + actualStart * width, totalRows * width, MPI_DOUBLE, worker, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD);
+        // non-blocking send to worker for overlapping communication
+        MPI_Isend(&dims, sizeof(ProcessDims), MPI_BYTE, worker, COMM_TAGS::DIMENSIONS, MPI_COMM_WORLD, &requests[reqIdx++]);
+        MPI_Isend(flattenMatrix.data() + actualStart * width, totalRows * width, MPI_DOUBLE, worker, COMM_TAGS::IMAGE_DATA, MPI_COMM_WORLD, &requests[reqIdx++]);
         
         startRow += rowsForWorker;
     }
+    
+    // wait for all sends to complete
+    MPI_Waitall(reqIdx, requests.data(), MPI_STATUSES_IGNORE);
 }
 
 int Master::getPaddingForLayer(LAYER layer) {
@@ -101,15 +107,20 @@ void Master::gatherAndSaveLayer() {
     int rowsForMaster = baseRows + (0 < remainder ? 1 : 0);
     copy(this->pixels.begin() + dims.offset * dims.width, this->pixels.begin() + (dims.offset + dims.rowsForWorker) * dims.width, pixels.begin());
 
+    // post all receives concurrently
+    vector<MPI_Request> requests(numtasks - 1);
     int startRow = rowsForMaster;    
     for (int worker = 1; worker < numtasks; ++worker) {
         // rows for this worker (distribute remainder)
         int rowsForWorker = baseRows + (worker < remainder ? 1 : 0);
         
-        MPI_Recv(&pixels[startRow * width], rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Irecv(&pixels[startRow * width], rowsForWorker * width, MPI_DOUBLE, worker, COMM_TAGS::RESULT_DATA, MPI_COMM_WORLD, &requests[worker - 1]);
         
         startRow += rowsForWorker;
     }
+    
+    // wait for all receives to complete
+    MPI_Waitall(numtasks - 1, requests.data(), MPI_STATUSES_IGNORE);
 
     image->setFlattenedMatrix(pixels);
 }

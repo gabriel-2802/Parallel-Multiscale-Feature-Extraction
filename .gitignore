@@ -4,3 +4,4 @@ objects/
 debug/venv/
 debug/image1_matrix.txt
 debug/image2_matrix.txt
+obj/
