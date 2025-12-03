@@ -8,7 +8,7 @@
 #include <omp.h>
 
 #include "../helpers/kernels.h"
-#include "aux.h"
+#include "auxs.h"
 #include "entity.h"
 #include "../helpers/image.h"
 #include "../helpers/kernels.h"

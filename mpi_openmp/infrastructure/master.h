@@ -1,7 +1,7 @@
 #pragma once
 #include "entity.h"
 #include "../helpers/image.h"
-#include "aux.h"
+#include "auxs.h"
 #include <memory>
 
 class Master : public Entity {
