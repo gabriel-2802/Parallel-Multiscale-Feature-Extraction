@@ -1,39 +1,34 @@
-# --- Compiler and Flags ---
-CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-but-set-variable
+USER        ?= your_user
 
-# --- Directories ---
-SRC_DIR := .
-HELPER_DIR := helpers
-OBJ_DIR := objects
+MAIN_DIR    ?= main_dir
+EXEC        ?= a.out
 
-# --- Files ---
-SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(HELPER_DIR)/*.cpp)
+REMOTE_BASE = ~/vtune_automation
+REMOTE_DIR  = $(REMOTE_BASE)
+REMOTE_MAIN = $(REMOTE_BASE)/$(MAIN_DIR)
 
-# Replace .cpp with .o and move into ./objects/
-OBJ_FILES := $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
+RESULT_DIR  = results/$(EXEC)_results
+FEP         = fep.grid.pub.ro
 
-# Output binary name
-TARGET := main
+run:
+	@mkdir -p $(RESULT_DIR)
 
-# --- Default target ---
-all: $(TARGET)
+	@echo ">>> Cleaning remote directory..."
+	ssh $(USER)@$(FEP) "rm -rf $(REMOTE_DIR); mkdir -p $(REMOTE_DIR)"
 
-# --- Link ---
-$(TARGET): $(OBJ_FILES)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	@echo ">>> Uploading MAIN_DIR, helpers, images..."
+	scp -r $(MAIN_DIR) $(USER)@$(FEP):$(REMOTE_DIR)/
+	scp -r helpers $(USER)@$(FEP):$(REMOTE_DIR)/
+	scp -r images $(USER)@$(FEP):$(REMOTE_DIR)/
+	scp remote_run.sh $(USER)@$(FEP):$(REMOTE_DIR)/
 
-# --- Compile each .cpp into ./objects/ folder ---
-$(OBJ_DIR)/%.o: %.cpp
-	@mkdir -p $(dir $@)       # ensure subfolders exist
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	@echo ">>> Running remote build + VTune..."
+	ssh $(USER)@$(FEP) "cd $(REMOTE_DIR) && bash remote_run.sh $(MAIN_DIR) $(EXEC)"
 
-# --- Clean ---
-clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	@echo ">>> Downloading VTune results..."
+	scp -r $(USER)@$(FEP):$(REMOTE_MAIN)/r* $(RESULT_DIR)/
 
-# --- Run ---
-run: $(TARGET)
-	./$(TARGET)
+	@echo ">>> Deleting remote project..."
+	ssh $(USER)@$(FEP) "rm -rf $(REMOTE_DIR)"
 
-.PHONY: all clean run
+	@echo "All results saved to: $(RESULT_DIR)/"

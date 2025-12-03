@@ -19,5 +19,4 @@ public:
 private:
     void receive();
     void send();
-
 };
