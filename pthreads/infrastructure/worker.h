@@ -7,7 +7,7 @@ struct ThreadData {
     std::vector<std::vector<double>>* input;  
     std::vector<std::vector<double>>* output;
 
-    const std::vector<std::vector<int>>* kernel;
+    std::vector<std::vector<int>> kernel;
 
     int width;
     int height;
