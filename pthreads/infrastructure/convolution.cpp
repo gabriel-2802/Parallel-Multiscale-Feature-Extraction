@@ -1,25 +1,27 @@
-#include "convolution.h"
-#include <vector>
-#include <climits>
+// #include "convolution.h"
+// #include <pthread.h>
+// #include <vector>
+// #include <climits>
+// #include <cstddef>
 
-std::vector<std::vector<double>> allocateMatrix(int height, int width) {
-    return std::vector<std::vector<double>>(height, std::vector<double>(width, 0.0));
-}
 
-void normalizeMatrix(std::vector<std::vector<double>> &matrix)
-{
-    double minVal = INT_MAX;
-    double maxVal = INT_MIN;
+// std::vector<std::vector<double>> allocateMatrix(int height, int width) {
+//     return std::vector<std::vector<double>>(height, std::vector<double>(width, 0.0));
+// }
 
-    for (const auto &row : matrix)
-        for (double v : row) {
-            if (v < minVal) minVal = v;
-            if (v > maxVal) maxVal = v;
-        }
+// void* normalizationRoutine(void* arg)
+// {
+//     NormData* data = (NormData*)(arg);
+//     auto& matrix = *(data->matrix);
 
-    double range = (maxVal - minVal == 0.0) ? 1.0 : (maxVal - minVal);
+//     double range = (data->globalMax - data->globalMin == 0.0) ? 1.0 : (data->globalMax - data->globalMin);
 
-    for (auto &row : matrix)
-        for (auto &val : row)
-            val = 255.0 * (val - minVal) / range;
-}
+//     for (int i = data->startRow; i < data->endRow; ++i)
+//     {
+//         auto &row = matrix[i];
+//         for (size_t j = 0; j < row.size(); ++j)
+//             row[j] = 255.0 * (row[j] - data->globalMin) / range;
+//     }
+
+//     return nullptr;
+// }

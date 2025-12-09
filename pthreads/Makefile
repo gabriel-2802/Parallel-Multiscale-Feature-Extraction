@@ -3,7 +3,7 @@ CXXFLAGS = -O2 -Wall -pthread
 
 SRC = pthreads.cpp \
       infrastructure/worker.cpp \
-      infrastructure/convolution.cpp \
+      infrastructure/thread_manager.cpp \
       ../helpers/image.cpp 
 
 INCLUDES = -Ihelpers -Iconvolution -Ipthreads

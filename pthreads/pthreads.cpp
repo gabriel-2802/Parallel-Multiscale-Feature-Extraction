@@ -1,51 +1,34 @@
-#include <iostream>
-#include <vector>
-#include <pthread.h>
-
 #include "../helpers/image.h"
 #include "../helpers/kernels.h"
 
-#include "infrastructure/convolution.h"
-#include "infrastructure/worker.h"
+#include "infrastructure/thread_manager.h"
+
+#include <iostream>
+#include <vector>
+#include <limits>
+#include <pthread.h>
 
 using namespace std;
+
+std::vector<std::vector<double>> allocateMatrix(int height, int width) {
+    return std::vector<std::vector<double>>(height, std::vector<double>(width, 0.0));
+}
 
 int main() {
 
     GreyScaleImage img("../images/image.png");
 
     auto input = img.getMatrix();
-    int height = img.getHeight();
-    int width = img.getWidth();
-
-    auto output = allocateMatrix(height, width);
+    auto output = allocateMatrix(img.getHeight(), img.getWidth());
 
     int numThreads = 4;   // just for now
-    vector<pthread_t> threads(numThreads);
-    vector<ThreadData> threadData(numThreads);
 
-    int rowsPerThread = height / numThreads;
+    auto threadData = runConvolutionThreads(input, output, LAYER_1_KERNEL, LAYER_1_PADDING, LAYER_1_DIV, numThreads);
 
-    for (int i = 0; i < numThreads; ++i) {
-        threadData[i].input = &input;
-        threadData[i].output = &output;
-        threadData[i].kernel = LAYER_1_KERNEL;
-        threadData[i].width = width;
-        threadData[i].height = height;
-        threadData[i].kernelSize = LAYER_1_KERNEL.size();
-        threadData[i].padding = LAYER_1_PADDING;
-        threadData[i].divisor = LAYER_1_DIV;
-        threadData[i].startRow = i * rowsPerThread;
-        threadData[i].endRow = (i == numThreads - 1) ? height : (i + 1) * rowsPerThread;
+    double globalMin, globalMax;
+    computeGlobalMinMax(threadData, globalMin, globalMax, numThreads);
 
-        pthread_create(&threads[i], nullptr, threadRoutine, &threadData[i]);
-    }
-
-    for (int i = 0; i < numThreads; ++i) {
-        pthread_join(threads[i], nullptr);
-    }
-
-    normalizeMatrix(output);
+    runNormalizationThreads(output, globalMin, globalMax, numThreads);
 
     img.setMatrix(output);
     img.save("../images/pthreads_output.png");

@@ -9,15 +9,18 @@ struct ThreadData {
 
     std::vector<std::vector<int>> kernel;
 
-    int width;
-    int height;
-    int kernelSize;
-    int padding;
-
+    int width, height, kernelSize, padding;
     double divisor;
+    int startRow, endRow;
 
-    int startRow;
-    int endRow;
+    double localMin, localMax;
+};
+
+struct NormData {
+    std::vector<std::vector<double>>* matrix;
+    int startRow, endRow;
+    double globalMin, globalMax;
 };
 
 void* threadRoutine(void* arg);
+void* normalizationRoutine(void* arg);
