@@ -1,18 +1,16 @@
 #include "../helpers/image.h"
 #include "../helpers/kernels.h"
 
+#include "infrastructure/utils.h"
 #include "infrastructure/thread_manager.h"
 
 #include <iostream>
 #include <vector>
 #include <limits>
+#include <thread>
 #include <pthread.h>
 
 using namespace std;
-
-std::vector<std::vector<double>> allocateMatrix(int height, int width) {
-    return std::vector<std::vector<double>>(height, std::vector<double>(width, 0.0));
-}
 
 int main() {
 
@@ -21,17 +19,22 @@ int main() {
     auto input = img.getMatrix();
     auto output = allocateMatrix(img.getHeight(), img.getWidth());
 
-    int numThreads = 4;   // just for now
-
-    auto threadData = runConvolutionThreads(input, output, LAYER_1_KERNEL, LAYER_1_PADDING, LAYER_1_DIV, numThreads);
-
+    unsigned int numThreads = std::thread::hardware_concurrency();
     double globalMin, globalMax;
-    computeGlobalMinMax(threadData, globalMin, globalMax, numThreads);
 
-    runNormalizationThreads(output, globalMin, globalMax, numThreads);
+    for (int l = 0; l < NUM_LAYERS; ++l) {
+        LAYER layer = static_cast<LAYER>(l);
+        auto threadData = runConvolutionThreads(input, output, layer, numThreads);
+
+        computeGlobalMinMax(threadData, globalMin, globalMax, numThreads);
+
+        runNormalizationThreads(output, globalMin, globalMax, numThreads);
+
+        std::swap(input, output);
+    }
 
     img.setMatrix(output);
-    img.save("../images/pthreads_output.png");
+    img.save("../images/output_pthreads.png");
 
     return 0;
 }

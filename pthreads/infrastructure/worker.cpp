@@ -9,9 +9,7 @@
 using namespace std;
 
 void* threadRoutine(void* arg) {
-    cout << "Thread started." << endl;
     ThreadData* data = (ThreadData*)(arg);
-
     auto& input = *(data->input);
     auto& output = *(data->output);
     const auto& kernel = data->kernel;

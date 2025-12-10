@@ -1,12 +1,12 @@
 CXX = g++
-CXXFLAGS = -O2 -Wall -pthread
+CXXFLAGS = -g -O0 -Wall -pthread
 
 SRC = pthreads.cpp \
       infrastructure/worker.cpp \
       infrastructure/thread_manager.cpp \
-      ../helpers/image.cpp 
+      ../helpers/image.cpp
 
-INCLUDES = -Ihelpers -Iconvolution -Ipthreads
+INCLUDES = -I../helpers -Iinfrastructure
 
 TARGET = pthreads
 
