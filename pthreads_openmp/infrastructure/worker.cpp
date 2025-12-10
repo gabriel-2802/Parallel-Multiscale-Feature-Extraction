@@ -1,15 +1,13 @@
 #include "worker.h"
-#include <iostream>
 #include <pthread.h>
 #include <omp.h>
-#include <vector>
 #include <algorithm>
-#include <climits>
 #include <cstddef>
 #include <cfloat>
 
 using namespace std;
 
+// convolution thread function with OpenMP
 void* threadRoutine(void* arg) {
     ThreadData* data = (ThreadData*)(arg);
     auto& input = *(data->input);
@@ -18,11 +16,19 @@ void* threadRoutine(void* arg) {
     int padding = data->padding;
     double divisor = data->divisor;
 
+    // These will store the min/max values
+    // computed by this thread only
     double localMin = DBL_MAX;
     double localMax = -DBL_MAX;
 
+    // This creates multiple OpenMP threads inside one pthread
+    // The for loop is automatically divided among the OpenMP threads
+    // Each OpenMP gets its copy of localMin and localMax
+    // At the end of the loop, OpenMP combines the results (all min values, all max values)
+    // The final results are stored back in localMin and localMax
     #pragma omp parallel for reduction(min:localMin) reduction(max:localMax)
     for (int y = data->startRow; y < data->endRow; ++y) {
+        // each omp thread processes multiple rows
         for (int x = 0; x < data->width; ++x) {
             double sum = 0.0;
             for (int ky = -padding; ky <= padding; ++ky) {
@@ -33,17 +39,21 @@ void* threadRoutine(void* arg) {
                 }
             }
             output[y][x] = sum / divisor;
+
+            // Update local min/max
             if (output[y][x] < localMin) localMin = output[y][x];
             if (output[y][x] > localMax) localMax = output[y][x];
         }
     }
 
+    // Store local min and max back to ThreadData
     data->localMin = localMin;
     data->localMax = localMax;
     
     return nullptr;
 }
 
+// normalization thread function with OpenMP
 void* normalizationRoutine(void* arg)
 {
     NormData* data = (NormData*)(arg);
@@ -51,6 +61,9 @@ void* normalizationRoutine(void* arg)
 
     double range = (data->globalMax - data->globalMin == 0.0) ? 1.0 : (data->globalMax - data->globalMin);
 
+    // Each OpenMP thread processes different rows
+    // No two threads write to the same pixel
+    // All rows are normalized in parallel
     #pragma omp parallel for
     for (int i = data->startRow; i < data->endRow; ++i)
     {

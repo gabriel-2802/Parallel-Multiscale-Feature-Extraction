@@ -6,6 +6,7 @@
 
 using namespace std;
 
+// create pthreads for convolution
 std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& input,
                            std::vector<std::vector<double>>& output,
                            LAYER layer, int numThreads) 
@@ -18,6 +19,7 @@ std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& 
     int rowsPerThread = height / numThreads;
 
     for (int i = 0; i < numThreads; ++i) {
+        // select kernel parameters based on layer
         threadData[i].kernel = (layer == LAYER::ONE) ? LAYER_1_KERNEL :
                                (layer == LAYER::TWO) ? LAYER_2_KERNEL :
                                LAYER_3_KERNEL;
@@ -27,6 +29,7 @@ std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& 
         threadData[i].divisor = (layer == LAYER::ONE) ? LAYER_1_DIV :
                                 (layer == LAYER::TWO) ? LAYER_2_DIV :
                                 LAYER_3_DIV;
+        // assign data to thread
         threadData[i].input = &input;
         threadData[i].output = &output;
         threadData[i].width = width;
@@ -37,12 +40,14 @@ std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& 
         threadData[i].localMin = std::numeric_limits<double>::max();
         threadData[i].localMax = std::numeric_limits<double>::lowest();
 
+        // launch thread
         int rc = pthread_create(&threads[i], nullptr, threadRoutine, &threadData[i]);
         if (rc != 0) {
             cerr << "pthread_create failed" << rc << endl;
         }
     }
 
+    // wait for all threads to finish
     for (int i = 0; i < numThreads; ++i) {
         pthread_join(threads[i], nullptr);
     }
@@ -50,12 +55,17 @@ std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& 
     return threadData;
 }
 
+// compute global min/max from all thread results 
+// All threads have a local min/max value
+// We want to find the global min/max across all threads
 void computeGlobalMinMax(const std::vector<ThreadData>& threadData,
                          double& globalMin, double& globalMax, int numThreads) 
 {
     globalMin = std::numeric_limits<double>::max();
     globalMax = std::numeric_limits<double>::lowest();
 
+    // Each OpenMP thread compares a few localMin/Max values
+    // reduction -> OpenMP keeps the smalles/largest value
     #pragma omp parallel for reduction(min:globalMin) reduction(max:globalMax)
     for (int i = 0; i < numThreads; ++i) {
         if (threadData[i].localMin < globalMin) globalMin = threadData[i].localMin;
@@ -63,6 +73,7 @@ void computeGlobalMinMax(const std::vector<ThreadData>& threadData,
     }
 }
 
+// create pthreads for normalization
 void runNormalizationThreads(std::vector<std::vector<double>>& matrix,
                              double globalMin, double globalMax,
                              int numThreads) 

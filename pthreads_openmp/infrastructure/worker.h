@@ -3,6 +3,7 @@
 #include <vector>
 #include <pthread.h>
 
+// Data structure for convolution thread
 struct ThreadData {
     std::vector<std::vector<double>>* input;  
     std::vector<std::vector<double>>* output;
@@ -16,6 +17,7 @@ struct ThreadData {
     double localMin, localMax;
 };
 
+// Data structure for normalization thread
 struct NormData {
     std::vector<std::vector<double>>* matrix;
     int startRow, endRow;
