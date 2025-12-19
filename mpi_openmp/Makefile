@@ -22,7 +22,10 @@ $(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR)
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
-run: $(TARGET)
+run:
+	mpirun -np 8 ./$(TARGET)
+	
+run_custom: $(TARGET)
 	mpirun -np $(NP) ./$(TARGET)
 
 clean:
