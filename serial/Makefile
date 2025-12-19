@@ -27,6 +27,5 @@ run: $(TARGET)
 
 clean:
 	rm -f $(OBJ_DIR)/*.o $(TARGET)
-	rmdir $(OBJ_DIR)
 
 rebuild: clean all

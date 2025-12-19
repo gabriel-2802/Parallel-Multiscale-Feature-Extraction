@@ -15,11 +15,10 @@ all: build
 build:
 	@set -e; \
 	for d in $(DIRS); do \
-		echo Building $$d"; \
-		$(MAKE) -C $$d build; \
+        echo "Building $$d"; \
+		$(MAKE) -C $$d; \
 	done
 
-.PHONY: run
 run:
 	@set -e; \
 	for d in $(DIRS); do \
