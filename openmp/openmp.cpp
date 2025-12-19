@@ -53,9 +53,8 @@ vector<vector<double>> applyKernel(
 
     vector<vector<double>> outMat(height, vector<double>(width, 0.0));
 
-    // Parallelize the outer loop
-    // We split the 'y' (rows) across threads.
-    // Each thread works on its own specific rows, writing to different parts of 'outMat'.
+    // the outer loop over 'y' rows is splitted among threads
+    // each thread works on its own specific rows, writing to different parts of 'outMat'.
     #pragma omp parallel for
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -82,9 +81,7 @@ void normalizeMatrix(vector<vector<double>> &matrix)
     int height = matrix.size();
     int width = matrix[0].size();
 
-    // Parallelize Finding Min/Max (Reduction)
-    // 'reduction' is crucial here. It gives each thread its own temporary minVal/maxVal,
-    // and combines them safely at the end. Without this, you get race conditions.
+    // reduction to find min and max values
     #pragma omp parallel for reduction(min:minVal) reduction(max:maxVal)
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -96,8 +93,7 @@ void normalizeMatrix(vector<vector<double>> &matrix)
 
     double range = (maxVal - minVal == 0.0) ? 1.0 : (maxVal - minVal);
 
-    // Parallelize Scaling
-    // This is safe because every pixel update is independent.
+    // normalization step where each pixel is processed in parallel
     #pragma omp parallel for
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
