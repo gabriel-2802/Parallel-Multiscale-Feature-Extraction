@@ -23,7 +23,7 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
 run:
-	mpirun -np 8 ./$(TARGET)
+	mpirun -np 16 ./$(TARGET)
 	
 run_custom: $(TARGET)
 	mpirun -np $(NP) ./$(TARGET)

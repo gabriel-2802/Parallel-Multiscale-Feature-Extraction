@@ -30,7 +30,7 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
 run: $(TARGET)
-	mpirun --oversubscribe -np 8 ./$(TARGET)
+	mpirun --oversubscribe -np 16 ./$(TARGET)
 
 run_custom: $(TARGET)
 	mpirun --oversubscribe -np $(NP) ./$(TARGET)
