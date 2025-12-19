@@ -22,10 +22,10 @@ using namespace std::chrono;
 #define BLOCK_SIZE 16
 #define MAX_KERNEL_SIZE 7
 
-// Constant memory for convolution kernels
+// stored the convolution kernel in constant memory for faster access
 __constant__ int d_kernel[MAX_KERNEL_SIZE * MAX_KERNEL_SIZE];
 
-// CUDA kernel for convolution
+// convolution kernel implementation
 __global__ void convolutionKernel(const double* input, double* output, 
                                    int width, int height, 
                                    int kernelSize, int padding, double divisor) {
@@ -48,7 +48,7 @@ __global__ void convolutionKernel(const double* input, double* output,
     output[y * width + x] = sum / divisor;
 }
 
-// CUDA kernel to find min and max values (reduction)
+// reduction kernel to find the min and max values
 __global__ void findMinMaxKernel(const double* data, double* minVals, double* maxVals, int size) {
     extern __shared__ double sdata[];
     double* smin = sdata;
@@ -57,11 +57,11 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
     unsigned int tid = threadIdx.x;
     unsigned int i = blockIdx.x * blockDim.x * 2 + threadIdx.x;
     
-    // Initialize with extreme values
+    // Initializing with extreme values before comparison
     double localMin = DBL_MAX;
     double localMax = -DBL_MAX;
     
-    // Load and do first comparison
+    // Loading data and performing the first comparison step
     if (i < size) {
         localMin = data[i];
         localMax = data[i];
@@ -76,7 +76,7 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
     smax[tid] = localMax;
     __syncthreads();
     
-    // Reduction in shared memory
+    // Performing the reduction in shared memory
     for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
         if (tid < s) {
             smin[tid] = smin[tid] < smin[tid + s] ? smin[tid] : smin[tid + s];
@@ -85,14 +85,14 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
         __syncthreads();
     }
     
-    // Write result for this block
+    // Writing the block's result back to global memory
     if (tid == 0) {
         minVals[blockIdx.x] = smin[0];
         maxVals[blockIdx.x] = smax[0];
     }
 }
 
-// CUDA kernel to normalize values
+// Kernel for normalizing the pixel values
 __global__ void normalizeKernel(double* data, int size, double minVal, double range) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -100,7 +100,7 @@ __global__ void normalizeKernel(double* data, int size, double minVal, double ra
     }
 }
 
-// Host function to normalize matrix on GPU
+// I wrote this helper to handle the normalization process on the GPU
 void normalizeMatrixGPU(double* d_data, int size) {
     int blockSize = 256;
     int numBlocks = (size + blockSize * 2 - 1) / (blockSize * 2);
@@ -109,12 +109,12 @@ void normalizeMatrixGPU(double* d_data, int size) {
     CUDA_CHECK(cudaMalloc(&d_minVals, numBlocks * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&d_maxVals, numBlocks * sizeof(double)));
     
-    // Find min/max with reduction
+    // First, I find the min and max values using the reduction kernel
     findMinMaxKernel<<<numBlocks, blockSize, 2 * blockSize * sizeof(double)>>>(
         d_data, d_minVals, d_maxVals, size);
     CUDA_CHECK(cudaGetLastError());
     
-    // Copy partial results to host for final reduction
+    // Then I copy the partial results back to the host to finish the reduction
     vector<double> h_minVals(numBlocks), h_maxVals(numBlocks);
     CUDA_CHECK(cudaMemcpy(h_minVals.data(), d_minVals, numBlocks * sizeof(double), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaMemcpy(h_maxVals.data(), d_maxVals, numBlocks * sizeof(double), cudaMemcpyDeviceToHost));
@@ -127,7 +127,7 @@ void normalizeMatrixGPU(double* d_data, int size) {
     
     double range = (maxVal - minVal == 0.0) ? 1.0 : (maxVal - minVal);
     
-    // Normalize
+    // Applying the normalization kernel
     int normalizeBlocks = (size + blockSize - 1) / blockSize;
     normalizeKernel<<<normalizeBlocks, blockSize>>>(d_data, size, minVal, range);
     CUDA_CHECK(cudaGetLastError());
@@ -136,22 +136,25 @@ void normalizeMatrixGPU(double* d_data, int size) {
     CUDA_CHECK(cudaFree(d_maxVals));
 }
 
-// Host function to apply kernel on GPU
+// checkout: Nsight Systems | NVIDIA Developer
+
+// handles the kernel application on the GPU
 void applyKernelGPU(double* d_input, double* d_output, int width, int height,
                     const vector<vector<int>>& kernel, double divisor, int padding) {
     int kernelSize = kernel.size();
     
-    // Flatten kernel and copy to constant memory
+    // flatten the 2D kernel and copy it to the constant memory symbol
     vector<int> flatKernel(kernelSize * kernelSize);
     for (int i = 0; i < kernelSize; ++i) {
         for (int j = 0; j < kernelSize; ++j) {
+            // !!!pointers!!!
             flatKernel[i * kernelSize + j] = kernel[i][j];
         }
     }
     CUDA_CHECK(cudaMemcpyToSymbol(d_kernel, flatKernel.data(), 
                                    kernelSize * kernelSize * sizeof(int)));
     
-    // Launch convolution kernel
+    // Launching the convolution kernel
     dim3 blockDim(BLOCK_SIZE, BLOCK_SIZE);
     dim3 gridDim((width + BLOCK_SIZE - 1) / BLOCK_SIZE, 
                  (height + BLOCK_SIZE - 1) / BLOCK_SIZE);
@@ -160,7 +163,7 @@ void applyKernelGPU(double* d_input, double* d_output, int width, int height,
                                               kernelSize, padding, divisor);
     CUDA_CHECK(cudaGetLastError());
     
-    // Normalize the output
+    // Normalizing the result matrix
     normalizeMatrixGPU(d_output, width * height);
     
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -175,27 +178,27 @@ int main() {
     int height = img.getHeight();
     int size = width * height;
     
-    // Get flattened matrix from image
+    // Converting the image to a flattened matrix for CUDA
     vector<double> h_data = img.getFlattenedMatrix();
     
     double *d_buffer1, *d_buffer2;
     CUDA_CHECK(cudaMalloc(&d_buffer1, size * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&d_buffer2, size * sizeof(double)));
     
-    // Copy input to device
+    // Copying the image data to the GPU
     CUDA_CHECK(cudaMemcpy(d_buffer1, h_data.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
     auto kernelStart = high_resolution_clock::now();
 
-    // Layer 1
+    // Applying the first layer kernel
     applyKernelGPU(d_buffer1, d_buffer2, width, height, LAYER_1_KERNEL, LAYER_1_DIV, LAYER_1_PADDING);
     cout << "Layer 1 complete" << endl;
 
-    // Layer 2 (output of layer 1 is input)
+    // Applying the second layer, using the output of the first as input
     applyKernelGPU(d_buffer2, d_buffer1, width, height, LAYER_2_KERNEL, LAYER_2_DIV, LAYER_2_PADDING);
     cout << "Layer 2 complete" << endl;
 
-    // Layer 3 (output of layer 2 is input)
+    // Finally applying the third layer
     applyKernelGPU(d_buffer1, d_buffer2, width, height, LAYER_3_KERNEL, LAYER_3_DIV, LAYER_3_PADDING);
     cout << "Layer 3 complete" << endl;
 
@@ -203,10 +206,10 @@ int main() {
     auto kernelDuration = duration_cast<milliseconds>(kernelStop - kernelStart);
     cout << "Kernel processing time: " << kernelDuration.count() << " ms" << endl;
 
-    // Copy result back to host
+    // Copying the processed data back to the host
     CUDA_CHECK(cudaMemcpy(h_data.data(), d_buffer2, size * sizeof(double), cudaMemcpyDeviceToHost));
     
-    // Set result back to image and save
+    // Updating the image object and saving the result
     img.setFlattenedMatrix(h_data);
     img.save("../images/output_cuda.png");
 

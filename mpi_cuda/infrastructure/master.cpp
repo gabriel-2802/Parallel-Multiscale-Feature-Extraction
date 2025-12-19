@@ -18,22 +18,16 @@ void Master::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         scatter(static_cast<LAYER>(layer));
         
-        // Initialize CUDA on first layer
-        if (layer == LAYER::ONE) {
-            initCUDA();
-        }
+        // Initialize/reinitialize CUDA for each layer (dimensions change due to padding)
+        initCUDA();
         
         process(static_cast<LAYER>(layer));
         computeMinMax();
         normalize();
         gatherAndSaveLayer();
-        
-        // Cleanup CUDA after last layer
-        if (layer == LAYER::THREE) {
-            cleanupCUDA();
-        }
     }
-
+    
+    cleanupCUDA();
     saveImage();
 }
 

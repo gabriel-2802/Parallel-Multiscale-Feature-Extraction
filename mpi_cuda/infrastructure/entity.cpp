@@ -15,11 +15,8 @@ using namespace std;
 #define BLOCK_SIZE 16
 #define MAX_KERNEL_SIZE 7
 
-// Constant memory for convolution kernels
-__constant__ int d_kernel[MAX_KERNEL_SIZE * MAX_KERNEL_SIZE];
-
-// CUDA kernel for convolution
-__global__ void convolutionKernel(const double* input, double* output, 
+// CUDA kernel for convolution - uses global memory for kernel instead of constant memory
+__global__ void convolutionKernel(const double* input, double* output, const int* kernel,
                                    int width, int totalRows, int rowsForWorker, int offset,
                                    int kernelSize, int padding, double divisor) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -39,7 +36,7 @@ __global__ void convolutionKernel(const double* input, double* output,
             ix = min(max(ix, 0), width - 1);
             
             int kidx = (ky + padding) * kernelSize + (kx + padding);
-            sum += input[iy * width + ix] * d_kernel[kidx];
+            sum += input[iy * width + ix] * kernel[kidx];
         }
     }
     
@@ -115,17 +112,43 @@ Entity::~Entity() {
 }
 
 void Entity::initCUDA() {
-    if (!cudaInitialized) {
-        // Input needs padding rows for convolution boundaries
-        int inputSize = dims.totalRows * dims.width;
-        CUDA_CHECK(cudaMalloc(&d_input, inputSize * sizeof(double)));
+    // Get the number of available CUDA devices (only once)
+    static bool deviceSet = false;
+    if (!deviceSet) {
+        int deviceCount = 0;
+        cudaError_t err = cudaGetDeviceCount(&deviceCount);
+        if (err != cudaSuccess || deviceCount == 0) {
+            cerr << "Rank " << rank << ": No CUDA devices available or error: " 
+                 << cudaGetErrorString(err) << endl;
+            exit(1);
+        }
         
-        // Output only needs worker's actual rows (no padding)
-        int outputSize = dims.rowsForWorker * dims.width;
-        CUDA_CHECK(cudaMalloc(&d_output, outputSize * sizeof(double)));
-        
-        cudaInitialized = true;
+        // Assign each MPI process to a GPU (round-robin if more processes than GPUs)
+        int deviceId = rank % deviceCount;
+        CUDA_CHECK(cudaSetDevice(deviceId));
+        deviceSet = true;
     }
+    
+    int inputSize = dims.totalRows * dims.width;
+    int outputSize = dims.rowsForWorker * dims.width;
+    
+    if (inputSize <= 0 || outputSize <= 0) {
+        cerr << "Rank " << rank << ": Invalid dimensions - totalRows=" << dims.totalRows 
+             << " width=" << dims.width << " rowsForWorker=" << dims.rowsForWorker << endl;
+        exit(1);
+    }
+    
+    // Free existing buffers if dimensions changed
+    if (cudaInitialized) {
+        CUDA_CHECK(cudaFree(d_input));
+        CUDA_CHECK(cudaFree(d_output));
+    }
+    
+    // Allocate with current dimensions
+    CUDA_CHECK(cudaMalloc(&d_input, inputSize * sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&d_output, outputSize * sizeof(double)));
+    
+    cudaInitialized = true;
 }
 
 void Entity::cleanupCUDA() {
@@ -182,15 +205,18 @@ void Entity::process(LAYER layer) {
     int kernelSize = kernel.size();
     int padding = kernelSize / 2;
     
-    // Flatten kernel and copy to constant memory
+    // Flatten kernel and allocate on device (using global memory instead of constant)
     vector<int> flatKernel(kernelSize * kernelSize);
     for (int i = 0; i < kernelSize; ++i) {
         for (int j = 0; j < kernelSize; ++j) {
             flatKernel[i * kernelSize + j] = kernel[i][j];
         }
     }
-    CUDA_CHECK(cudaMemcpyToSymbol(d_kernel, flatKernel.data(), 
-                                   kernelSize * kernelSize * sizeof(int)));
+    
+    int* d_kernel;
+    CUDA_CHECK(cudaMalloc(&d_kernel, kernelSize * kernelSize * sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(d_kernel, flatKernel.data(), 
+                          kernelSize * kernelSize * sizeof(int), cudaMemcpyHostToDevice));
     
     // Upload pixels to GPU
     int size = dims.totalRows * dims.width;
@@ -201,12 +227,15 @@ void Entity::process(LAYER layer) {
     dim3 gridDim((dims.width + BLOCK_SIZE - 1) / BLOCK_SIZE, 
                  (dims.rowsForWorker + BLOCK_SIZE - 1) / BLOCK_SIZE);
     
-    convolutionKernel<<<gridDim, blockDim>>>(d_input, d_output, 
+    convolutionKernel<<<gridDim, blockDim>>>(d_input, d_output, d_kernel,
                                               dims.width, dims.totalRows, 
                                               dims.rowsForWorker, dims.offset,
                                               kernelSize, padding, divisor);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
+    
+    // Free the kernel memory
+    CUDA_CHECK(cudaFree(d_kernel));
     
     // Copy compact output back to padded input for next layer
     // This allows next layer's convolution to access full padded buffer

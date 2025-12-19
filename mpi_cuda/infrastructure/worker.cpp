@@ -12,21 +12,16 @@ void Crew::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         receive();
         
-        // Initialize CUDA on first layer
-        if (layer == LAYER::ONE) {
-            initCUDA();
-        }
+        // Initialize/reinitialize CUDA for each layer (dimensions change due to padding)
+        initCUDA();
         
         process(static_cast<LAYER>(layer));
         computeMinMax();
         normalize();
         send();
-        
-        // Cleanup CUDA after last layer
-        if (layer == LAYER::THREE) {
-            cleanupCUDA();
-        }
     }
+    
+    cleanupCUDA();
 }
 
 void Crew::receive() {
