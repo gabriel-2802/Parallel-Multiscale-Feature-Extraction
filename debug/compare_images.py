@@ -27,7 +27,6 @@ def main():
 
     print("Matrices saved to image1_matrix.txt and image2_matrix.txt")
 
-    # Use Ubuntu diff command
     try:
         print("\n--- Diff between the two matrices ---")
         subprocess.run(["diff", "-u", "image1_matrix.txt", "image2_matrix.txt"])

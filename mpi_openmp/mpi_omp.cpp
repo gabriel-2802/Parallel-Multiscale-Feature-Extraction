@@ -34,8 +34,8 @@ int main(int argc, char** argv) {
 		entity->run();
 	}
 	
-	MPI_Finalize();
 	auto stop = high_resolution_clock::now();
+	MPI_Finalize();
 
 	return 0;
 }
