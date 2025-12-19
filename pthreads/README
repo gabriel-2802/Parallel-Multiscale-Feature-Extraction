@@ -1,0 +1,26 @@
+This project implements a parallel image processing
+pipeline using pthreads.
+The pipeline consisits of the following steps, executed for each layer:
+- Parallel convolution using pthreads
+- Local min/max computation per thread
+- Global min/max reduction
+- Parallel normalization using pthreads
+Each layer processes the output of the previous one.
+
+### Convolution
+- The image is split by rows.
+- Each pthread processes a contiguous block of rows.
+- Threads compute:
+  - convolution output
+  - local minimum
+  - local maximum
+
+### Min / Max Reduction
+- After all threads finish, the local min/max values are combined to obtain:
+  - global minimum
+  - global maximum  
+- This step is done serially (low overhead, small number of threads).
+
+### Normalization
+- A second set of pthreads normalizes the output image using the global min/max values.
+- Each thread processes a different range of rows.
