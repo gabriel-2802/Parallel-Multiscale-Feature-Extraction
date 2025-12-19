@@ -1,5 +1,7 @@
 # Parallel Multiscale Feature Extraction
 
+**Students:**: Gabriel Valentin Carauleanu 344C1, Sampetru Mario 344C1, Chelaru Diana Mariana 
+
 This project implements a parallel image processing pipeline using multiple parallelization approaches. The pipeline performs multiscale convolution filtering across three layers with different kernel sizes, computing normalized feature maps for each layer.
 
 ## Common Pipeline Overview
