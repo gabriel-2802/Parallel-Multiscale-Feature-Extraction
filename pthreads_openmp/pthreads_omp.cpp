@@ -8,7 +8,7 @@ using namespace std;
 
 int main() {
 
-    GreyScaleImage img("../images/image.png");
+    GreyScaleImage img("../images/upscaled_image.png");
 
     auto input = img.getMatrix();
     auto output = allocateMatrix(img.getHeight(), img.getWidth());
