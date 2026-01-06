@@ -15,7 +15,6 @@ using namespace std;
 #define BLOCK_SIZE 16
 #define MAX_KERNEL_SIZE 7
 
-// CUDA kernel for convolution - uses global memory for kernel instead of constant memory
 __global__ void convolutionKernel(const double* input, double* output, const int* kernel,
                                    int width, int totalRows, int rowsForWorker, int offset,
                                    int kernelSize, int padding, double divisor) {
@@ -31,7 +30,7 @@ __global__ void convolutionKernel(const double* input, double* output, const int
             int iy = offset + y + ky;
             int ix = x + kx;
             
-            // Clamp to boundaries
+            // clamp to boundaries
             iy = min(max(iy, 0), totalRows - 1);
             ix = min(max(ix, 0), width - 1);
             
@@ -40,7 +39,7 @@ __global__ void convolutionKernel(const double* input, double* output, const int
         }
     }
     
-    // Write to output using relative indexing (no offset needed)
+    // write to output using relative indexing 
     output[y * width + x] = sum / divisor;
 }
 
@@ -55,11 +54,11 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
     unsigned int i = blockIdx.x * blockDim.x * 2 + threadIdx.x;
     int size = rowsForWorker * width;
     
-    // Initialize with extreme values
+    // initialize with extreme values
     double localMin = DBL_MAX;
     double localMax = -DBL_MAX;
     
-    // Load and do first comparison - data is now compact without padding
+    // load and do first comparison
     if (i < size) {
         double val = data[i];
         localMin = val;
@@ -75,7 +74,7 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
     smax[tid] = localMax;
     __syncthreads();
     
-    // Reduction in shared memory
+    // eduction in shared memory
     for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
         if (tid < s) {
             smin[tid] = smin[tid] < smin[tid + s] ? smin[tid] : smin[tid + s];
@@ -84,7 +83,7 @@ __global__ void findMinMaxKernel(const double* data, double* minVals, double* ma
         __syncthreads();
     }
     
-    // Write result for this block
+    // write result for this block
     if (tid == 0) {
         minVals[blockIdx.x] = smin[0];
         maxVals[blockIdx.x] = smax[0];
@@ -112,7 +111,7 @@ Entity::~Entity() {
 }
 
 void Entity::initCUDA() {
-    // Get the number of available CUDA devices (only once)
+    // get the number of available CUDA devices
     static bool deviceSet = false;
     if (!deviceSet) {
         int deviceCount = 0;
@@ -123,7 +122,7 @@ void Entity::initCUDA() {
             exit(1);
         }
         
-        // Assign each MPI process to a GPU (round-robin if more processes than GPUs)
+        // assign each MPI process to a GPU (round-robin if more processes than GPUs)
         int deviceId = rank % deviceCount;
         CUDA_CHECK(cudaSetDevice(deviceId));
         deviceSet = true;
@@ -138,13 +137,13 @@ void Entity::initCUDA() {
         exit(1);
     }
     
-    // Free existing buffers if dimensions changed
+    // free existing buffers if dimensions changed
     if (cudaInitialized) {
         CUDA_CHECK(cudaFree(d_input));
         CUDA_CHECK(cudaFree(d_output));
     }
     
-    // Allocate with current dimensions
+    // allocate with current dimensions
     CUDA_CHECK(cudaMalloc(&d_input, inputSize * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&d_output, outputSize * sizeof(double)));
     
@@ -168,13 +167,13 @@ void Entity::computeMinMax() {
     CUDA_CHECK(cudaMalloc(&d_minVals, numBlocks * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&d_maxVals, numBlocks * sizeof(double)));
     
-    // Find min/max with reduction on output buffer (compact data)
+    // find min/max with reduction on output buffer
     findMinMaxKernel<<<numBlocks, blockSize, 2 * blockSize * sizeof(double)>>>(
         d_output, d_minVals, d_maxVals, dims.width, dims.rowsForWorker);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     
-    // Copy partial results to host for final reduction
+    // copy partial results to host for final reduction
     vector<double> h_minVals(numBlocks), h_maxVals(numBlocks);
     CUDA_CHECK(cudaMemcpy(h_minVals.data(), d_minVals, numBlocks * sizeof(double), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaMemcpy(h_maxVals.data(), d_maxVals, numBlocks * sizeof(double), cudaMemcpyDeviceToHost));
@@ -188,7 +187,7 @@ void Entity::computeMinMax() {
     CUDA_CHECK(cudaFree(d_minVals));
     CUDA_CHECK(cudaFree(d_maxVals));
     
-    // Global reduction across all MPI processes
+    // global reduction across all MPI processes
     MPI_Allreduce(&localMinMax.min, &minMax.min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&localMinMax.max, &minMax.max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 }
@@ -205,7 +204,7 @@ void Entity::process(LAYER layer) {
     int kernelSize = kernel.size();
     int padding = kernelSize / 2;
     
-    // Flatten kernel and allocate on device (using global memory instead of constant)
+    // flatten kernel and allocate on device
     vector<int> flatKernel(kernelSize * kernelSize);
     int* flatPtr = flatKernel.data();
     for (int i = 0; i < kernelSize; ++i) {
@@ -220,11 +219,11 @@ void Entity::process(LAYER layer) {
     CUDA_CHECK(cudaMemcpy(d_kernel, flatKernel.data(), 
                           kernelSize * kernelSize * sizeof(int), cudaMemcpyHostToDevice));
     
-    // Upload pixels to GPU
+    // upload pixels to GPU
     int size = dims.totalRows * dims.width;
     CUDA_CHECK(cudaMemcpy(d_input, pixels.data(), size * sizeof(double), cudaMemcpyHostToDevice));
     
-    // Launch convolution kernel
+    // launch convolution kernel
     dim3 blockDim(BLOCK_SIZE, BLOCK_SIZE);
     dim3 gridDim((dims.width + BLOCK_SIZE - 1) / BLOCK_SIZE, 
                  (dims.rowsForWorker + BLOCK_SIZE - 1) / BLOCK_SIZE);
@@ -236,11 +235,10 @@ void Entity::process(LAYER layer) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     
-    // Free the kernel memory
+    // free the kernel memory
     CUDA_CHECK(cudaFree(d_kernel));
     
-    // Copy compact output back to padded input for next layer
-    // This allows next layer's convolution to access full padded buffer
+    // copy compact output back to padded input for next layer
     CUDA_CHECK(cudaMemcpy(d_input + dims.offset * dims.width, d_output, 
                          dims.rowsForWorker * dims.width * sizeof(double), 
                          cudaMemcpyDeviceToDevice));
@@ -249,7 +247,7 @@ void Entity::process(LAYER layer) {
 void Entity::normalize() {
     double range = (minMax.max - minMax.min == 0) ? 1.0 : (minMax.max - minMax.min);
     
-    // Launch normalization kernel
+    // launch normalization kernel
     dim3 blockDim(BLOCK_SIZE, BLOCK_SIZE);
     dim3 gridDim((dims.width + BLOCK_SIZE - 1) / BLOCK_SIZE, 
                  (dims.rowsForWorker + BLOCK_SIZE - 1) / BLOCK_SIZE);
@@ -259,7 +257,7 @@ void Entity::normalize() {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
     
-    // Download normalized data back to host (only worker's rows)
+    // download normalized data back to host
     CUDA_CHECK(cudaMemcpy(pixels.data() + dims.offset * dims.width, d_output, 
                          dims.rowsForWorker * dims.width * sizeof(double), 
                          cudaMemcpyDeviceToHost));

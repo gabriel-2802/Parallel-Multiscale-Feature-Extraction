@@ -17,18 +17,18 @@ int main() {
     unsigned int numThreads = std::thread::hardware_concurrency();
     double globalMin, globalMax;
 
-    // Apply each layer sequentially
+    // apply each layer sequentially
     for (int l = 0; l < NUM_LAYERS; ++l) {
         // convert int to LAYER enum
         LAYER layer = static_cast<LAYER>(l);
 
-        // Convolution
+        // convolution
         auto threadData = runConvolutionThreads(input, output, layer, numThreads);
 
-        // Compute global min and max from all threads
+        // compute global min and max from all threads
         computeGlobalMinMax(threadData, globalMin, globalMax, numThreads);
 
-        // Normalization
+        // normalization
         runNormalizationThreads(output, globalMin, globalMax, numThreads);
 
         // output becomes input for next layer

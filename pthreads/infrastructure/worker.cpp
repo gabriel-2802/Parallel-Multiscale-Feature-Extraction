@@ -14,7 +14,7 @@ void* threadRoutine(void* arg) {
     int padding = data->padding;
     double divisor = data->divisor;
 
-    // Loop over the rows assigned to this thread
+    // loop over the rows assigned to this thread
     for (int y = data->startRow; y < data->endRow; ++y) {
         for (int x = 0; x < data->width; ++x) {
             double sum = 0.0;
@@ -30,7 +30,7 @@ void* threadRoutine(void* arg) {
     
             output[y][x] = sum / divisor;
 
-            // Update local min/max
+            // update local min/max
             // each thread keeps track of its own local min/max
             if (output[y][x] < data->localMin) data->localMin = output[y][x];
             if (output[y][x] > data->localMax) data->localMax = output[y][x];

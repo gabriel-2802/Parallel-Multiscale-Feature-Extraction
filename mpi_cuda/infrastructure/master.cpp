@@ -18,7 +18,7 @@ void Master::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         scatter(static_cast<LAYER>(layer));
         
-        // Initialize/reinitialize CUDA for each layer (dimensions change due to padding)
+        // initialize/reinitialize CUDA for each layer (dimensions change due to padding)
         initCUDA();
         
         process(static_cast<LAYER>(layer));

@@ -12,7 +12,7 @@ void Crew::run() {
     for (int layer = LAYER::ONE; layer <= LAYER::THREE; ++layer) {
         receive();
         
-        // Initialize/reinitialize CUDA for each layer (dimensions change due to padding)
+        // initialize/reinitialize CUDA for each layer (dimensions change due to padding)
         initCUDA();
         
         process(static_cast<LAYER>(layer));

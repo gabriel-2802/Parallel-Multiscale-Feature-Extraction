@@ -56,15 +56,15 @@ std::vector<ThreadData> runConvolutionThreads(std::vector<std::vector<double>>& 
 }
 
 // compute global min/max from all thread results 
-// All threads have a local min/max value
-// We want to find the global min/max across all threads
+// all threads have a local min/max value
+// we want to find the global min/max across all threads
 void computeGlobalMinMax(const std::vector<ThreadData>& threadData,
                          double& globalMin, double& globalMax, int numThreads) 
 {
     globalMin = std::numeric_limits<double>::max();
     globalMax = std::numeric_limits<double>::lowest();
 
-    // Each OpenMP thread compares a few localMin/Max values
+    // each OpenMP thread compares a few localMin/Max values
     // reduction -> OpenMP keeps the smalles/largest value
     #pragma omp parallel for reduction(min:globalMin) reduction(max:globalMax)
     for (int i = 0; i < numThreads; ++i) {

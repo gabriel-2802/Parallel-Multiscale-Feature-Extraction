@@ -16,16 +16,16 @@ void* threadRoutine(void* arg) {
     int padding = data->padding;
     double divisor = data->divisor;
 
-    // These will store the min/max values
+    // these will store the min/max values
     // computed by this thread only
     double localMin = DBL_MAX;
     double localMax = -DBL_MAX;
 
-    // This creates multiple OpenMP threads inside one pthread
-    // The for loop is automatically divided among the OpenMP threads
-    // Each OpenMP gets its copy of localMin and localMax
-    // At the end of the loop, OpenMP combines the results (all min values, all max values)
-    // The final results are stored back in localMin and localMax
+    // this creates multiple OpenMP threads inside one pthread
+    // the for loop is automatically divided among the OpenMP threads
+    // each OpenMP gets its copy of localMin and localMax
+    // at the end of the loop, OpenMP combines the results (all min values, all max values)
+    // the final results are stored back in localMin and localMax
     #pragma omp parallel for reduction(min:localMin) reduction(max:localMax)
     for (int y = data->startRow; y < data->endRow; ++y) {
         // each omp thread processes multiple rows
@@ -40,13 +40,13 @@ void* threadRoutine(void* arg) {
             }
             output[y][x] = sum / divisor;
 
-            // Update local min/max
+            // update local min/max
             if (output[y][x] < localMin) localMin = output[y][x];
             if (output[y][x] > localMax) localMax = output[y][x];
         }
     }
 
-    // Store local min and max back to ThreadData
+    // store local min and max back to ThreadData
     data->localMin = localMin;
     data->localMax = localMax;
     
@@ -61,9 +61,9 @@ void* normalizationRoutine(void* arg)
 
     double range = (data->globalMax - data->globalMin == 0.0) ? 1.0 : (data->globalMax - data->globalMin);
 
-    // Each OpenMP thread processes different rows
-    // No two threads write to the same pixel
-    // All rows are normalized in parallel
+    // each OpenMP thread processes different rows
+    // no two threads write to the same pixel
+    // all rows are normalized in parallel
     #pragma omp parallel for
     for (int i = data->startRow; i < data->endRow; ++i)
     {
