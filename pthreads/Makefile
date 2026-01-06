@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g -O0 -Wall -pthread
+CXXFLAGS = -g -Wall -pthread
 
 SRC = pthreads.cpp \
       infrastructure/worker.cpp \

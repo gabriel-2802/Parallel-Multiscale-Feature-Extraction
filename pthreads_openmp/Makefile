@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g -O0 -Wall -pthread -fopenmp
+CXXFLAGS = -g -Wall -pthread -fopenmp
 
 SRC = pthreads_omp.cpp \
       infrastructure/worker.cpp \
