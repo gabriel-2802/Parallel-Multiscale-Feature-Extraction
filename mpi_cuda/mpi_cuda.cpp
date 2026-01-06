@@ -33,8 +33,7 @@ int main(int argc, char** argv) {
 		entity = make_unique<Crew>(numtasks, rank);
 		entity->run();
 	}
-	
-	auto stop = high_resolution_clock::now();
+
 	MPI_Finalize();
 
 	return 0;

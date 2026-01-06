@@ -207,9 +207,11 @@ void Entity::process(LAYER layer) {
     
     // Flatten kernel and allocate on device (using global memory instead of constant)
     vector<int> flatKernel(kernelSize * kernelSize);
+    int* flatPtr = flatKernel.data();
     for (int i = 0; i < kernelSize; ++i) {
+        const int* rowPtr = kernel[i].data();
         for (int j = 0; j < kernelSize; ++j) {
-            flatKernel[i * kernelSize + j] = kernel[i][j];
+            *flatPtr++ = *rowPtr++;
         }
     }
     
