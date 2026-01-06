@@ -3,12 +3,16 @@
 #include "infrastructure/utils.h"
 #include "infrastructure/thread_manager.h"
 #include <thread>
+#include <iostream>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 int main() {
+    auto start = high_resolution_clock::now();
 
-    GreyScaleImage img("../images/upscaled_upscaled_image.png");
+    GreyScaleImage img("../images/image.png");
 
     auto input = img.getMatrix();
     auto output = allocateMatrix(img.getHeight(), img.getWidth());
@@ -37,6 +41,10 @@ int main() {
 
     img.setMatrix(input);
     img.save("../images/output_pthreads_omp.png");
+
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    cout << "Processing time: " << duration.count() << " ms" << endl;
 
     return 0;
 }

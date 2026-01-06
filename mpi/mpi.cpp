@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 	if (rank == MASTER_RANK) {
 		auto start = high_resolution_clock::now();
 
-		entity = make_unique<Master>(numtasks, rank, "../images/upscaled_upscaled_image.png", "../images/output_mpi.png");
+		entity = make_unique<Master>(numtasks, rank, "../images/image.png", "../images/output_mpi.png");
 		entity->run();
 
 		auto stop = high_resolution_clock::now();
@@ -34,7 +34,6 @@ int main(int argc, char** argv) {
 		entity->run();
 	}
 
-	auto stop = high_resolution_clock::now();
 	MPI_Finalize();
 
 	return 0;

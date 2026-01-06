@@ -168,7 +168,7 @@ void applyKernelGPU(double* d_input, double* d_output, int width, int height,
 int main() {
     auto start = high_resolution_clock::now();
 
-    GreyScaleImage img("../images/upscaled_upscaled_image.png");
+    GreyScaleImage img("../images/image.png");
     
     int width = img.getWidth();
     int height = img.getHeight();

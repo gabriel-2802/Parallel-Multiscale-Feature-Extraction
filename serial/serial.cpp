@@ -18,7 +18,7 @@ int main() {
     auto start = high_resolution_clock::now();
 
     //load input image
-    GreyScaleImage img("../images/upscaled_upscaled_image.png");
+    GreyScaleImage img("../images/image.png");
 
     // convert loaded image to a double matrix
     const auto &inputMat = img.getMatrix();

@@ -18,7 +18,7 @@ void normalizeMatrix(vector<vector<double>> &matrix);
 int main() {
     auto start = high_resolution_clock::now();
 
-    GreyScaleImage img("../images/upscaled_upscaled_image.png");
+    GreyScaleImage img("../images/image.png");
     const auto &inputMat = img.getMatrix();
     vector<vector<double>> layer1, layer2, layer3;
 

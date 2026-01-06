@@ -22,11 +22,11 @@ $(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR)
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
-run:
-	mpirun -np 16 ./$(TARGET)
+run: $(TARGET)
+	mpirun --oversubscribe -np 16 ./$(TARGET)
 	
 run_custom: $(TARGET)
-	mpirun -np $(NP) ./$(TARGET)
+	mpirun --oversubscribe -np $(NP) ./$(TARGET)
 
 clean:
 	rm -f $(OBJ_DIR)/*.o $(TARGET)
