@@ -2,25 +2,33 @@ with 16 threads/processes (maximum I have on my machine)
 
 - mpi
 	- big image: 44302 ms
+	- medium image: 32226 ms
 	- small image: 7528 ms
 - openmp
 	- big image: 28428 ms
+	- medium image: 19731 ms
 	- small image: 4480 ms
 - cuda
 	- big image: 16103 ms
+	- medium image: 13592 ms
 	- small image: 3075 ms
 - mpi_cuda
 	- big image: 25924 ms
+	- medium image: 16822 ms
 	- small image: 5116 ms
 - pthreads
 	- big image: 35529 ms
+	- medium image: 25073 ms
 	- small image: 5907 ms
 - serial
-	- big image: 147706 ms
+	- big image: 155735 ms
+	- medium image: 98869 ms
 	- small image: 23503 ms
 - mpi_openmp
 	- big image: 46966 ms
+	- medium image: 32561 ms
 	- small image: 11317 ms
 - pthreads_openmp
 	- big image: 35589 ms
+	- medium image: 28701 ms
 	- small image: 6302 ms

@@ -1,2 +1,3 @@
 small image: 4434x3547
+medium image: 8868x7094
 big image: 11085x8868
